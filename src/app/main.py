@@ -9,6 +9,7 @@ from flask import jsonify, Request
 from app.router import Router, RequestContext
 from clients.swapi import SwapiClient
 from app.handlers.films import list_films_handler
+from app.handlers.people import list_people_handler
 from schemas.common import ok
 
 
@@ -32,6 +33,8 @@ def create_app_router(swapi_client: SwapiClient | None = None) -> Router:
 
     client = swapi_client or SwapiClient(sleep_fn=lambda _: None)  # em prod, pode deixar default sleep_fn
     router.add_route("GET", "/films", list_films_handler(client))
+
+    router.add_route("GET", "/people", list_people_handler(client))
 
     return router
 
