@@ -1,6 +1,5 @@
 import httpx
 import respx
-import pytest
 
 from clients.swapi import RetryConfig, SwapiClient
 from app.main import create_app_router
@@ -72,3 +71,39 @@ def test_films_list_timeout_returns_504():
 
     assert status == 504
     assert payload["errors"][0]["code"] == "UPSTREAM_TIMEOUT"
+
+
+@respx.mock
+def test_films_list_respects_page_size_and_links():
+    respx.get("https://swapi.dev/api/films/").respond(
+        200,
+        json={
+            "count": 2,
+            "results": [
+                {"title": "A New Hope", "url": "https://swapi.dev/api/films/1/"},
+                {"title": "The Empire Strikes Back", "url": "https://swapi.dev/api/films/2/"},
+            ],
+        },
+    )
+
+    client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
+    router = create_app_router(swapi_client=client)
+
+    status, payload, _headers = router.dispatch(
+        method="GET",
+        path="/films",
+        query={"page": "1", "page_size": "1"},
+        headers={"x-request-id": "rid-x"},
+        body=None,
+        request_id="rid-x",
+    )
+
+    assert status == 200
+    assert payload["meta"]["page"] == 1
+    assert payload["meta"]["page_size"] == 1
+    assert payload["meta"]["count"] == 1
+    assert payload["links"]["self"] == "/films?page=1&page_size=1"
+    assert payload["links"]["next"] == "/films?page=2&page_size=1"
+    assert payload["links"]["prev"] is None
+    assert len(payload["data"]) == 1
+    assert payload["data"][0]["id"] == 1
