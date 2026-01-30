@@ -1,8 +1,11 @@
 openapi: 3.0.3
+
 info:
   title: Star Wars Explorer API
   version: 0.1.0
-  description: API para explorar SWAPI com padrões de paginação, filtros e envelope de resposta.
+  description: >
+    API para explorar dados da SWAPI com padrões consistentes de envelope,
+    paginação e tratamento de erros.
 
 servers:
   - url: https://example-gateway-url
@@ -33,8 +36,58 @@ paths:
                       self: "/health"
                     errors: []
 
+  /films:
+    get:
+      summary: List films
+      operationId: listFilms
+      description: >
+        Lista filmes da saga Star Wars.
+        Suporta paginação via `page` (1-based) e busca textual via `q`,
+        mapeada para o parâmetro `search` da SWAPI.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Página (1-based).
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Busca textual (mapeada para `search` na SWAPI).
+      responses:
+        "200":
+          description: Lista de filmes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeFilmsList"
+        "400":
+          description: Erro de validação de parâmetros
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeError"
+        "502":
+          description: Erro ao consumir a SWAPI
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeError"
+        "504":
+          description: Timeout ao consumir a SWAPI
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeError"
+
 components:
   schemas:
+    # ---------- ERROS ----------
     ErrorItem:
       type: object
       additionalProperties: false
@@ -49,6 +102,23 @@ components:
           additionalProperties: true
           nullable: true
 
+    EnvelopeError:
+      type: object
+      additionalProperties: false
+      required: [data, meta, links, errors]
+      properties:
+        data:
+          nullable: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+        links:
+          $ref: "#/components/schemas/Links"
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorItem"
+
+    # ---------- META / LINKS ----------
     Meta:
       type: object
       additionalProperties: false
@@ -87,6 +157,7 @@ components:
           type: string
           nullable: true
 
+    # ---------- HEALTH ----------
     HealthData:
       type: object
       additionalProperties: false
@@ -103,6 +174,52 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/HealthData"
+          nullable: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+        links:
+          $ref: "#/components/schemas/Links"
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorItem"
+
+    # ---------- FILMS ----------
+    Film:
+      type: object
+      additionalProperties: true
+      required: [id, title, url]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        episode_id:
+          type: integer
+          nullable: true
+        director:
+          type: string
+          nullable: true
+        producer:
+          type: string
+          nullable: true
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        url:
+          type: string
+
+    EnvelopeFilmsList:
+      type: object
+      additionalProperties: false
+      required: [data, meta, links, errors]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Film"
           nullable: true
         meta:
           $ref: "#/components/schemas/Meta"
