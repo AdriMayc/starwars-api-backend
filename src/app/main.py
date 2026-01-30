@@ -7,6 +7,8 @@ from typing import Any
 from flask import jsonify, Request
 
 from app.router import Router, RequestContext
+from clients.swapi import SwapiClient
+from app.handlers.films import list_films_handler
 from schemas.common import ok
 
 
@@ -24,9 +26,13 @@ def health_handler(ctx: RequestContext) -> tuple[int, dict[str, Any], dict[str, 
     return 200, env.model_dump(), {}
 
 
-def create_app_router() -> Router:
+def create_app_router(swapi_client: SwapiClient | None = None) -> Router:
     router = Router()
     router.add_route("GET", "/health", health_handler)
+
+    client = swapi_client or SwapiClient(sleep_fn=lambda _: None)  # em prod, pode deixar default sleep_fn
+    router.add_route("GET", "/films", list_films_handler(client))
+
     return router
 
 
