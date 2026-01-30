@@ -1,0 +1,114 @@
+openapi: 3.0.3
+info:
+  title: Star Wars Explorer API
+  version: 0.1.0
+  description: API para explorar SWAPI com padrões de paginação, filtros e envelope de resposta.
+
+servers:
+  - url: https://example-gateway-url
+    description: API Gateway
+  - url: http://localhost:8080
+    description: Local (Functions Framework)
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeHealth"
+              examples:
+                ok:
+                  value:
+                    data:
+                      status: ok
+                    meta:
+                      request_id: "c2f0f6a0-2f2d-4dc5-9f1f-0a7b0b7f2a33"
+                    links:
+                      self: "/health"
+                    errors: []
+
+components:
+  schemas:
+    ErrorItem:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    Meta:
+      type: object
+      additionalProperties: false
+      required: [request_id]
+      properties:
+        request_id:
+          type: string
+        page:
+          type: integer
+          minimum: 1
+          nullable: true
+        page_size:
+          type: integer
+          minimum: 1
+          nullable: true
+        count:
+          type: integer
+          minimum: 0
+          nullable: true
+        total:
+          type: integer
+          minimum: 0
+          nullable: true
+
+    Links:
+      type: object
+      additionalProperties: false
+      required: [self]
+      properties:
+        self:
+          type: string
+        next:
+          type: string
+          nullable: true
+        prev:
+          type: string
+          nullable: true
+
+    HealthData:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    EnvelopeHealth:
+      type: object
+      additionalProperties: false
+      required: [data, meta, links, errors]
+      properties:
+        data:
+          $ref: "#/components/schemas/HealthData"
+          nullable: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+        links:
+          $ref: "#/components/schemas/Links"
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorItem"
