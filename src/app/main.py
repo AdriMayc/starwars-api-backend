@@ -1,0 +1,46 @@
+# src/app/main.py
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from flask import jsonify, Request
+
+from app.router import Router, RequestContext
+from schemas.common import ok
+
+
+def _new_request_id() -> str:
+    return str(uuid.uuid4())
+
+
+def health_handler(ctx: RequestContext) -> tuple[int, dict[str, Any], dict[str, str]]:
+    # self_url aqui é o próprio path
+    env = ok(
+        data={"status": "ok"},
+        request_id=ctx.headers.get("x-request-id") or _new_request_id(),
+        self_url=ctx.path,
+    )
+    return 200, env.model_dump(), {}
+
+
+def create_app_router() -> Router:
+    router = Router()
+    router.add_route("GET", "/health", health_handler)
+    return router
+
+
+# Entry-point para Cloud Functions (Functions Framework)
+def main(request: Request):
+    router = create_app_router()
+
+    request_id = request.headers.get("x-request-id") or _new_request_id()
+    status, payload, headers = router.dispatch(
+        method=request.method,
+        path=request.path,
+        query=request.args.to_dict(flat=True),
+        headers=dict(request.headers),
+        body=request.get_json(silent=True),
+        request_id=request_id,
+    )
+    return jsonify(payload), status, headers
