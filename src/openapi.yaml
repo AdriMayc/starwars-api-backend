@@ -2,10 +2,11 @@ openapi: 3.0.3
 
 info:
   title: Star Wars Explorer API
-  version: 0.1.0
-  description: >
-    API para explorar dados da SWAPI com padrões consistentes de envelope,
-    paginação e tratamento de erros.
+  version: 0.2.0
+  description: |
+    API backend para explorar dados de Star Wars a partir da SWAPI.
+    Expõe um contrato próprio com paginação, filtros, envelope padrão
+    e endpoints correlacionados.
 
 servers:
   - url: https://example-gateway-url
@@ -40,55 +41,81 @@ paths:
     get:
       summary: List films
       operationId: listFilms
-      description: >
-        Lista filmes da saga Star Wars.
-        Suporta paginação via `page` (1-based) e busca textual via `q`,
-        mapeada para o parâmetro `search` da SWAPI.
       parameters:
-        - name: page_size
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 50
-            default: 10
-          description: Tamanho da página (1..50). Observação: SWAPI pagina em blocos fixos; aqui aplicamos limite local nos resultados.
-        - name: q
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Busca textual (mapeada para `search` na SWAPI).
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
       responses:
         "200":
-          description: Lista de filmes
+          description: Films list
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/EnvelopeFilmsList"
         "400":
-          description: Erro de validação de parâmetros
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnvelopeError"
+          description: Validation error
         "502":
-          description: Erro ao consumir a SWAPI
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnvelopeError"
+          description: Upstream error
         "504":
-          description: Timeout ao consumir a SWAPI
+          description: Upstream timeout
+
+  /people:
+    get:
+      summary: List people
+      operationId: listPeople
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: People list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EnvelopeError"
+                $ref: "#/components/schemas/EnvelopePeopleList"
+        "400":
+          description: Validation error
+        "502":
+          description: Upstream error
+        "504":
+          description: Upstream timeout
 
 components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Página (1-based).
+
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+      description: |
+        Tamanho da página (1..50).
+        Observação: a SWAPI pagina em blocos fixos; este valor
+        limita os resultados localmente.
+
+    Search:
+      name: q
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Busca textual (mapeada para `search` da SWAPI).
+
   schemas:
-    # ---------- ERROS ----------
     ErrorItem:
       type: object
       additionalProperties: false
@@ -103,23 +130,6 @@ components:
           additionalProperties: true
           nullable: true
 
-    EnvelopeError:
-      type: object
-      additionalProperties: false
-      required: [data, meta, links, errors]
-      properties:
-        data:
-          nullable: true
-        meta:
-          $ref: "#/components/schemas/Meta"
-        links:
-          $ref: "#/components/schemas/Links"
-        errors:
-          type: array
-          items:
-            $ref: "#/components/schemas/ErrorItem"
-
-    # ---------- META / LINKS ----------
     Meta:
       type: object
       additionalProperties: false
@@ -158,7 +168,6 @@ components:
           type: string
           nullable: true
 
-    # ---------- HEALTH ----------
     HealthData:
       type: object
       additionalProperties: false
@@ -168,24 +177,6 @@ components:
           type: string
           enum: [ok]
 
-    EnvelopeHealth:
-      type: object
-      additionalProperties: false
-      required: [data, meta, links, errors]
-      properties:
-        data:
-          $ref: "#/components/schemas/HealthData"
-          nullable: true
-        meta:
-          $ref: "#/components/schemas/Meta"
-        links:
-          $ref: "#/components/schemas/Links"
-        errors:
-          type: array
-          items:
-            $ref: "#/components/schemas/ErrorItem"
-
-    # ---------- FILMS ----------
     Film:
       type: object
       additionalProperties: true
@@ -193,34 +184,29 @@ components:
       properties:
         id:
           type: integer
-          minimum: 1
         title:
           type: string
-        episode_id:
-          type: integer
-          nullable: true
-        director:
-          type: string
-          nullable: true
-        producer:
-          type: string
-          nullable: true
-        release_date:
-          type: string
-          format: date
-          nullable: true
         url:
           type: string
 
-    EnvelopeFilmsList:
+    Person:
+      type: object
+      additionalProperties: true
+      required: [id, name, url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+
+    EnvelopeBase:
       type: object
       additionalProperties: false
       required: [data, meta, links, errors]
       properties:
         data:
-          type: array
-          items:
-            $ref: "#/components/schemas/Film"
           nullable: true
         meta:
           $ref: "#/components/schemas/Meta"
@@ -230,3 +216,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ErrorItem"
+
+    EnvelopeHealth:
+      allOf:
+        - $ref: "#/components/schemas/EnvelopeBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/HealthData"
+
+    EnvelopeFilmsList:
+      allOf:
+        - $ref: "#/components/schemas/EnvelopeBase"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Film"
+
+    EnvelopePeopleList:
+      allOf:
+        - $ref: "#/components/schemas/EnvelopeBase"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Person"
