@@ -45,14 +45,15 @@ paths:
         Suporta paginação via `page` (1-based) e busca textual via `q`,
         mapeada para o parâmetro `search` da SWAPI.
       parameters:
-        - name: page
+        - name: page_size
           in: query
           required: false
           schema:
             type: integer
             minimum: 1
-            default: 1
-          description: Página (1-based).
+            maximum: 50
+            default: 10
+          description: Tamanho da página (1..50). Observação: SWAPI pagina em blocos fixos; aqui aplicamos limite local nos resultados.
         - name: q
           in: query
           required: false
