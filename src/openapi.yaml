@@ -103,6 +103,28 @@ paths:
         "504":
           description: Upstream timeout
 
+  /starships:
+    get:
+      summary: List starships
+      operationId: listStarships
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Starships list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStarshipsList"
+        "400":
+          description: Validation error
+        "502":
+          description: Upstream error
+        "504":
+          description: Upstream timeout
+
 components:
   parameters:
     Page:
@@ -235,6 +257,18 @@ components:
         url:
           type: string
 
+    Starship:
+      type: object
+      additionalProperties: true
+      required: [id, name, url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+
     EnvelopeBase:
       type: object
       additionalProperties: false
@@ -288,3 +322,13 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Planet"
+    
+    EnvelopeStarshipsList:
+      allOf:
+        - $ref: "#/components/schemas/EnvelopeBase"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Starship"
