@@ -12,6 +12,7 @@ from app.handlers.films import list_films_handler
 from app.handlers.people import list_people_handler
 from app.handlers.planets import list_planets_handler
 from app.handlers.starships import list_starships_handler
+from app.handlers.film_characters import list_film_characters_handler
 from schemas.common import ok
 
 
@@ -33,15 +34,17 @@ def create_app_router(swapi_client: SwapiClient | None = None) -> Router:
     router = Router()
     router.add_route("GET", "/health", health_handler)
 
-    client = swapi_client or SwapiClient(sleep_fn=lambda _: None)  # em prod, pode deixar default sleep_fn
+    client = swapi_client or SwapiClient(sleep_fn=lambda _: None) 
     router.add_route("GET", "/films", list_films_handler(client))
 
     router.add_route("GET", "/people", list_people_handler(client))
     
     router.add_route("GET", "/planets", list_planets_handler(client))
 
-    router.add_route("GET", "/starships", list_starships_handler(swapi_client))
+    router.add_route("GET", "/starships", list_starships_handler(client))
 
+    router.add_route("GET", "/films/{id}/characters", list_film_characters_handler(client))
+    
     return router
 
 
