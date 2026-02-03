@@ -125,6 +125,32 @@ paths:
         "504":
           description: Upstream timeout
 
+  /films/{id}/characters:
+    get:
+      summary: List film characters
+      operationId: listFilmCharacters
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Film characters list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeFilmCharactersList"
+        "400":
+          description: Validation error
+        "404":
+          description: Upstream not found
+        "502":
+          description: Upstream error
+        "504":
+          description: Upstream timeout
+
+
 components:
   parameters:
     Page:
@@ -158,6 +184,15 @@ components:
       schema:
         type: string
       description: Busca textual (mapeada para `search` da SWAPI).
+
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID do recurso na SWAPI.
 
   schemas:
     ErrorItem:
@@ -332,3 +367,13 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Starship"
+
+  EnvelopeFilmCharactersList:
+      allOf:
+        - $ref: "#/components/schemas/EnvelopeBase"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Person"
