@@ -122,3 +122,22 @@ class SwapiClient:
 
         # fallback (não deve chegar aqui)
         raise SwapiError("Unexpected SWAPI client failure") from last_exc
+
+
+    def get_films(self, search: str | None = None) -> JsonDict:
+        params: dict[str, Any] = {}
+        if search:
+            params["search"] = search
+        return self.get("/films/", params=params or None)
+
+    def get_people(self, search: str | None = None) -> JsonDict:
+        params: dict[str, Any] = {}
+        if search:
+            params["search"] = search
+        return self.get("/people/", params=params or None)
+
+    def get_planets(self, search: str | None = None) -> JsonDict:
+        params: dict[str, Any] = {}
+        if search:
+            params["search"] = search
+        return self.get("/planets/", params=params or None)
