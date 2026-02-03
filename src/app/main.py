@@ -13,6 +13,7 @@ from app.handlers.people import list_people_handler
 from app.handlers.planets import list_planets_handler
 from app.handlers.starships import list_starships_handler
 from app.handlers.film_characters import list_film_characters_handler
+from app.handlers.planet_residents import list_planet_residents_handler
 from schemas.common import ok
 
 
@@ -44,6 +45,8 @@ def create_app_router(swapi_client: SwapiClient | None = None) -> Router:
     router.add_route("GET", "/starships", list_starships_handler(client))
 
     router.add_route("GET", "/films/{id}/characters", list_film_characters_handler(client))
+    
+    router.add_route("GET", "/planets/{id}/residents", list_planet_residents_handler(client))
     
     return router
 
