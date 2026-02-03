@@ -81,6 +81,28 @@ paths:
         "504":
           description: Upstream timeout
 
+  /planets:
+    get:
+      summary: List planets
+      operationId: listPlanets
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Planets list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePlanetsList"
+        "400":
+          description: Validation error
+        "502":
+          description: Upstream error
+        "504":
+          description: Upstream timeout
+
 components:
   parameters:
     Page:
@@ -201,6 +223,18 @@ components:
         url:
           type: string
 
+    Planet:
+      type: object
+      additionalProperties: true
+      required: [id, name, url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+
     EnvelopeBase:
       type: object
       additionalProperties: false
@@ -244,3 +278,13 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Person"
+
+    EnvelopePlanetsList:
+      allOf:
+        - $ref: "#/components/schemas/EnvelopeBase"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Planet"
