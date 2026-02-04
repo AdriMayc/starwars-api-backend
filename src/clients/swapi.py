@@ -85,7 +85,7 @@ class SwapiClient:
 
                 # 404: não retry
                 if resp.status_code == 404:
-                    raise SwapiNotFound("SWAPI resource not found")
+                    raise SwapiNotFound(f"SWAPI 404 for {resp.request.url}")
 
                 # 4xx (exceto 429) não retry
                 if 400 <= resp.status_code < 500 and resp.status_code != 429:
