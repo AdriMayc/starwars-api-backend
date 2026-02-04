@@ -3,3 +3,4 @@
 *.pyc
 .pytest_cache/
 .coverage
+openapi-gateway.rendered.yaml
