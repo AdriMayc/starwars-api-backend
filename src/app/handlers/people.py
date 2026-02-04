@@ -5,6 +5,7 @@ from typing import Any
 
 from app.pagination import PaginationError, build_links, build_self_url, parse_pagination
 from app.router import RequestContext
+from app.swapi_window import fetch_window
 from clients.swapi import (
     SwapiBadResponse,
     SwapiClient,
@@ -31,26 +32,24 @@ def list_people_handler(client: SwapiClient):
             )
             return status, env.model_dump(), {}
 
-        params: dict[str, Any] = {"page": page}
-        if q:
-            params["search"] = q
-
         try:
-            data = client.get("/people/", params=params)
-
-            results = data.get("results", [])
-            results = results[:page_size]  # limitação consciente SWAPI
-            items = [attach_id(it) for it in results]
-
-            total_raw = data.get("count")
-            total = (
-                int(total_raw)
-                if isinstance(total_raw, int)
-                or (isinstance(total_raw, str) and total_raw.isdigit())
-                else None
+            window, total = fetch_window(
+                client,
+                "/people/",
+                page=page,
+                page_size=page_size,
+                search=q,
             )
 
-            links = build_links(ctx.path, page=page, page_size=page_size, q=q, total=total)
+            items = [attach_id(it) for it in window]
+
+            links = build_links(
+                ctx.path,
+                page=page,
+                page_size=page_size,
+                q=q,
+                total=total,
+            )
 
             env = ok(
                 data=items,

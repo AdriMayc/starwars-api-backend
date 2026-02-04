@@ -7,7 +7,10 @@ from app.main import create_app_router
 
 @respx.mock
 def test_planets_list_success_adds_id_and_envelope():
-    respx.get("https://swapi.dev/api/planets/").respond(
+    respx.get(
+        "https://swapi.dev/api/planets/",
+        params={"page": 1},
+    ).respond(
         200,
         json={
             "count": 1,
@@ -55,7 +58,10 @@ def test_planets_list_invalid_page_returns_400():
 
 @respx.mock
 def test_planets_list_timeout_returns_504():
-    respx.get("https://swapi.dev/api/planets/").side_effect = httpx.ReadTimeout("boom")
+    respx.get(
+        "https://swapi.dev/api/planets/",
+        params={"page": 1},
+    ).side_effect = httpx.ReadTimeout("boom")
 
     client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
     router = create_app_router(swapi_client=client)
@@ -75,7 +81,10 @@ def test_planets_list_timeout_returns_504():
 
 @respx.mock
 def test_planets_list_respects_page_size_and_links():
-    respx.get("https://swapi.dev/api/planets/").respond(
+    respx.get(
+        "https://swapi.dev/api/planets/",
+        params={"page": 1},
+    ).respond(
         200,
         json={
             "count": 2,
@@ -106,3 +115,51 @@ def test_planets_list_respects_page_size_and_links():
     assert payload["links"]["prev"] is None
     assert len(payload["data"]) == 1
     assert payload["data"][0]["id"] == 1
+
+
+@respx.mock
+def test_planets_list_page_size_20_fetches_multiple_pages():
+    respx.get(
+        "https://swapi.dev/api/planets/",
+        params={"page": 1},
+    ).respond(
+        200,
+        json={
+            "count": 20,
+            "results": [
+                {"name": f"PL{i}", "url": f"https://swapi.dev/api/planets/{i}/"}
+                for i in range(1, 11)
+            ],
+        },
+    )
+
+    respx.get(
+        "https://swapi.dev/api/planets/",
+        params={"page": 2},
+    ).respond(
+        200,
+        json={
+            "count": 20,
+            "results": [
+                {"name": f"PL{i}", "url": f"https://swapi.dev/api/planets/{i}/"}
+                for i in range(11, 21)
+            ],
+        },
+    )
+
+    client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
+    router = create_app_router(swapi_client=client)
+
+    status, payload, _ = router.dispatch(
+        method="GET",
+        path="/planets",
+        query={"page": "1", "page_size": "20"},
+        headers={"x-request-id": "rid-pl5"},
+        body=None,
+        request_id="rid-pl5",
+    )
+
+    assert status == 200
+    assert payload["meta"]["count"] == 20
+    assert payload["meta"]["total"] == 20
+    assert len(payload["data"]) == 20

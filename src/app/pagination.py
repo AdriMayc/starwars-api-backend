@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Mapping
+from urllib.parse import urlencode
 
 
 class PaginationError(ValueError):
@@ -34,20 +35,28 @@ def build_self_url(path: str, query: Mapping[str, Any]) -> str:
     extra = [k for k in query.keys() if k not in keys]
     ordered = keys + sorted(extra)
 
-    parts: list[str] = []
+    # filtra vazios e mantém ordem
+    items: list[tuple[str, str]] = []
     for k in ordered:
         if k not in query:
             continue
         v = query.get(k)
         if v is None or v == "":
             continue
-        parts.append(f"{k}={v}")
+        items.append((k, str(v)))
 
-    qs = "&".join(parts)
+    qs = urlencode(items)
     return f"{path}?{qs}" if qs else path
 
 
-def build_links(path: str, *, page: int, page_size: int, q: str | None, total: int | None) -> dict[str, str | None]:
+def build_links(
+    path: str,
+    *,
+    page: int,
+    page_size: int,
+    q: str | None,
+    total: int | None,
+) -> dict[str, str | None]:
     base_query: dict[str, Any] = {"page": page, "page_size": page_size}
     if q:
         base_query["q"] = q
@@ -57,15 +66,12 @@ def build_links(path: str, *, page: int, page_size: int, q: str | None, total: i
     next_url: str | None = None
     prev_url: str | None = None
 
-    # prev sempre possível quando page>1
     if page > 1:
         prev_q = dict(base_query)
         prev_q["page"] = page - 1
         prev_url = build_self_url(path, prev_q)
 
-    # next só quando total conhecido e há mais páginas
     if total is not None:
-        # total pages = ceil(total/page_size)
         total_pages = (total + page_size - 1) // page_size
         if page < total_pages:
             next_q = dict(base_query)
