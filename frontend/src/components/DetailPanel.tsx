@@ -47,7 +47,7 @@ export function DetailPanel({
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Basic Information */}
-      <div className="p-6 border-b border-neutral-800">
+      <div data-testid="basic-info" className="p-6 border-b border-neutral-800">
         <h2 className="text-lg font-medium text-neutral-100 mb-4">Basic Information</h2>
         <div className="space-y-3">
           <div className="flex">
@@ -71,7 +71,7 @@ export function DetailPanel({
         <div className="space-y-3">
           {getDisplayFields().map((field, index) => (
             <div key={index} className="flex">
-              <span className="text-sm text-neutral-500 w-40 flex-shrink-0">{field.label}</span>
+              <span className="text-sm text-neutral-500 w-40 shrink-0">{field.label}</span>
               <span className="text-sm text-neutral-300">{field.value}</span>
             </div>
           ))}
