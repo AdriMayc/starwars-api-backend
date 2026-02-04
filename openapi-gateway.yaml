@@ -1,0 +1,231 @@
+swagger: "2.0"
+info:
+  title: StarWars Explorer API (Gateway)
+  version: "1.0.0"
+schemes:
+  - https
+produces:
+  - application/json
+
+# API Key via header x-api-key (recomendado no case)
+securityDefinitions:
+  api_key:
+    type: apiKey
+    name: x-api-key
+    in: header
+
+# Aplica auth globalmente
+security:
+  - api_key: []
+
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Health check
+      responses:
+        200:
+          description: OK
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /films:
+    get:
+      operationId: filmsList
+      summary: List films
+      parameters:
+        - name: q
+          in: query
+          type: string
+        - name: page
+          in: query
+          type: integer
+          minimum: 1
+        - name: page_size
+          in: query
+          type: integer
+          minimum: 1
+          maximum: 50
+      responses:
+        200:
+          description: OK
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /films/{id}:
+    get:
+      operationId: filmsGetById
+      summary: Get film by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+      responses:
+        200:
+          description: OK
+        404:
+          description: Not found
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /films/{id}/characters:
+    get:
+      operationId: filmsCharacters
+      summary: List characters for a film id (correlated)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+        - name: page
+          in: query
+          type: integer
+          minimum: 1
+        - name: page_size
+          in: query
+          type: integer
+          minimum: 1
+          maximum: 50
+      responses:
+        200:
+          description: OK
+        404:
+          description: Not found
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /people:
+    get:
+      operationId: peopleList
+      summary: List people
+      parameters:
+        - name: q
+          in: query
+          type: string
+        - name: page
+          in: query
+          type: integer
+          minimum: 1
+        - name: page_size
+          in: query
+          type: integer
+          minimum: 1
+          maximum: 50
+      responses:
+        200:
+          description: OK
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /people/{id}:
+    get:
+      operationId: peopleGetById
+      summary: Get person by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+      responses:
+        200:
+          description: OK
+        404:
+          description: Not found
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /planets:
+    get:
+      operationId: planetsList
+      summary: List planets
+      parameters:
+        - name: q
+          in: query
+          type: string
+        - name: page
+          in: query
+          type: integer
+          minimum: 1
+        - name: page_size
+          in: query
+          type: integer
+          minimum: 1
+          maximum: 50
+      responses:
+        200:
+          description: OK
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /planets/{id}:
+    get:
+      operationId: planetsGetById
+      summary: Get planet by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+      responses:
+        200:
+          description: OK
+        404:
+          description: Not found
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /starships:
+    get:
+      operationId: starshipsList
+      summary: List starships
+      parameters:
+        - name: q
+          in: query
+          type: string
+        - name: page
+          in: query
+          type: integer
+          minimum: 1
+        - name: page_size
+          in: query
+          type: integer
+          minimum: 1
+          maximum: 50
+      responses:
+        200:
+          description: OK
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
+
+  /starships/{id}:
+    get:
+      operationId: starshipsGetById
+      summary: Get starship by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+      responses:
+        200:
+          description: OK
+        404:
+          description: Not found
+      x-google-backend:
+        address: ${FUNC_URL}
+        path_translation: APPEND_PATH_TO_ADDRESS
