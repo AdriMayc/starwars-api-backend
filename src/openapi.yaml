@@ -150,7 +150,7 @@ paths:
         "504":
           description: Upstream timeout
 
-/planets/{id}/residents:
+  /planets/{id}/residents:
     get:
       summary: List planet residents
       operationId: listPlanetResidents
