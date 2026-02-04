@@ -33,7 +33,7 @@ def list_planets_handler(client: SwapiClient):
         try:
             window, total = fetch_window(
                 client,
-                "/planets/",
+                "planets/",
                 page=page,
                 page_size=page_size,
                 search=q,

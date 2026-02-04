@@ -33,7 +33,7 @@ def list_starships_handler(client: SwapiClient):
         try:
             window, total = fetch_window(
                 client,
-                "/starships/",
+                "starships/",
                 page=page,
                 page_size=page_size,
                 search=q,

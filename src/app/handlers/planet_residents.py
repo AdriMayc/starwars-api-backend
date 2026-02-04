@@ -35,7 +35,7 @@ def list_planet_residents_handler(client: SwapiClient):
 
         # 1) buscar planeta
         try:
-            planet = client.get(f"/planets/{planet_id}/", params=None)
+            planet = client.get(f"planets/{planet_id}/", params=None)
         except SwapiTimeout:
             status, env = fail(
                 request_id=ctx.headers.get("x-request-id", ""),

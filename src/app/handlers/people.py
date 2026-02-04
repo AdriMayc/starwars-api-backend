@@ -35,7 +35,7 @@ def list_people_handler(client: SwapiClient):
         try:
             window, total = fetch_window(
                 client,
-                "/people/",
+                "people/",
                 page=page,
                 page_size=page_size,
                 search=q,

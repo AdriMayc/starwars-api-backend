@@ -35,7 +35,7 @@ def list_film_characters_handler(client: SwapiClient):
 
         # 1) buscar filme
         try:
-            film = client.get(f"/films/{film_id}/", params=None)
+            film = client.get(f"films/{film_id}/", params=None)
         except SwapiTimeout:
             status, env = fail(
                 request_id=ctx.headers.get("x-request-id", ""),

@@ -3,6 +3,12 @@ import type { ApiEnvelope, ResourceType, Resource, RelatedItem } from "../types/
 
 type ErrorLike = { code?: string; message?: string };
 
+type CacheEntry = { ts: number; value: ApiEnvelope<any> };
+
+const DEFAULT_TTL_MS = 60_000; // 60s (ajuste se quiser)
+const cache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, Promise<ApiEnvelope<any>>>();
+
 function buildQuery(params: Record<string, unknown>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -26,27 +32,46 @@ function normalizeErrors(errors: unknown): string[] {
       return "Unknown error";
     });
   }
-  // backend sempre manda array, mas mantém fallback
   return ["Unknown error"];
 }
 
-async function requestEnvelope<T>(
-  path: string,
-  signal?: AbortSignal
-): Promise<ApiEnvelope<T>> {
+// --- abort helper (por consumidor) ---
+function abortError(): any {
+  // DOMException existe no browser; fallback para ambientes de teste
+  try {
+    return new DOMException("Aborted", "AbortError");
+  } catch {
+    const err: any = new Error("Aborted");
+    err.name = "AbortError";
+    return err;
+  }
+}
+
+function withAbort<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return p;
+  if (signal.aborted) return Promise.reject(abortError());
+
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => {
+      signal.addEventListener("abort", () => reject(abortError()), { once: true });
+    }),
+  ]);
+}
+
+async function requestEnvelope<T>(path: string): Promise<ApiEnvelope<T>> {
   const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
 
   const headers: Record<string, string> = { accept: "application/json" };
   if (apiKey) headers["x-api-key"] = apiKey;
 
-  const res = await fetch(path, { headers, signal });
+  const res = await fetch(path, { headers });
   const text = await res.text();
 
   let json: any;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
-    // retorno “envelope-like” para não quebrar UI
     return {
       data: [] as any,
       meta: { request_id: "n/a" },
@@ -55,12 +80,10 @@ async function requestEnvelope<T>(
     };
   }
 
-  // normaliza errors do envelope do backend
   if (json && typeof json === "object" && "errors" in json) {
     json.errors = normalizeErrors(json.errors);
   }
 
-  // se HTTP != 2xx, ainda devolve envelope normalizado (sem throw)
   if (!res.ok) {
     const reqId = json?.meta?.request_id ?? "n/a";
     const errs = normalizeErrors(json?.errors) || [];
@@ -76,6 +99,74 @@ async function requestEnvelope<T>(
   return json as ApiEnvelope<T>;
 }
 
+// --- cache/dedupe wrapper ---
+function cacheKey(path: string): string {
+  // inclui apiKey porque muda identidade do request
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+  return `${apiKey ?? "no-key"}|${path}`;
+}
+
+export function peekCachedEnvelope<T>(path: string): ApiEnvelope<T> | null {
+  const key = cacheKey(path);
+  const entry = cache.get(key);
+  if (!entry) return null;
+  const age = Date.now() - entry.ts;
+  if (age > DEFAULT_TTL_MS) return null;
+  return entry.value as ApiEnvelope<T>;
+}
+
+async function requestEnvelopeCached<T>(path: string, signal?: AbortSignal): Promise<ApiEnvelope<T>> {
+  const key = cacheKey(path);
+
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.ts <= DEFAULT_TTL_MS) {
+    return cached.value as ApiEnvelope<T>;
+  }
+
+  const inflight = inFlight.get(key);
+  if (inflight) {
+    return withAbort(inflight as Promise<ApiEnvelope<T>>, signal) as Promise<ApiEnvelope<T>>;
+  }
+
+  const p = requestEnvelope<T>(path)
+    .then((env) => {
+      cache.set(key, { ts: Date.now(), value: env });
+      return env;
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+
+  inFlight.set(key, p as Promise<ApiEnvelope<any>>);
+  return withAbort(p, signal);
+}
+
+// builders (para reutilizar no App e pegar cache)
+export function buildResourcesPath(resource: ResourceType, page: number, pageSize: number, q: string) {
+  const query = buildQuery({
+    page,
+    page_size: pageSize,
+    q: q?.trim() ? q.trim() : undefined,
+  });
+  return `/api/${resource}${query}`;
+}
+
+export function buildRelatedPath(
+  resource: "films" | "planets",
+  id: number,
+  rel: "characters" | "residents",
+  page: number = 1,
+  pageSize: number = 10,
+  q?: string
+) {
+  const query = buildQuery({
+    page,
+    page_size: pageSize,
+    q: q?.trim() ? q.trim() : undefined,
+  });
+  return `/api/${resource}/${id}/${rel}${query}`;
+}
+
 // LIST
 export async function fetchResources(
   resource: ResourceType,
@@ -84,13 +175,8 @@ export async function fetchResources(
   q: string,
   signal?: AbortSignal
 ): Promise<ApiEnvelope<Resource>> {
-  const query = buildQuery({
-    page,
-    page_size: pageSize,
-    q: q?.trim() ? q.trim() : undefined,
-  });
-
-  return requestEnvelope<Resource>(`/api/${resource}${query}`, signal);
+  const path = buildResourcesPath(resource, page, pageSize, q);
+  return requestEnvelopeCached<Resource>(path, signal);
 }
 
 // RELATED
@@ -103,11 +189,6 @@ export async function fetchRelated(
   pageSize: number = 10,
   q?: string
 ): Promise<ApiEnvelope<RelatedItem>> {
-  const query = buildQuery({
-    page,
-    page_size: pageSize,
-    q: q?.trim() ? q.trim() : undefined,
-  });
-
-  return requestEnvelope<RelatedItem>(`/api/${resource}/${id}/${rel}${query}`, signal);
+  const path = buildRelatedPath(resource, id, rel, page, pageSize, q);
+  return requestEnvelopeCached<RelatedItem>(path, signal);
 }

@@ -5,6 +5,28 @@ from clients.swapi import RetryConfig, SwapiClient
 from app.main import create_app_router
 
 
+def mock_swapi_people_page(respx, page: int, total: int = 82):
+    base = "https://swapi.dev/api/people/"
+    start = (page - 1) * 10 + 1
+    end = min(page * 10, total)
+
+    if start > total:
+        # página fora do range -> SWAPI costuma responder 404
+        respx.get(base, params={"page": page}).respond(404)
+        return
+
+    respx.get(base, params={"page": page}).respond(
+        200,
+        json={
+            "count": total,
+            "results": [
+                {"name": f"P{i}", "url": f"https://swapi.dev/api/people/{i}/"}
+                for i in range(start, end + 1)
+            ],
+        },
+    )
+
+
 @respx.mock
 def test_people_list_success_adds_id_and_envelope():
     respx.get(
@@ -160,3 +182,32 @@ def test_people_list_page_size_20_fetches_multiple_pages():
     assert payload["meta"]["count"] == 20
     assert payload["meta"]["total"] == 20
     assert len(payload["data"]) == 20
+
+@respx.mock
+def test_people_list_page_size_50_page_2_handles_swapi_404_on_page_10():
+    # page=2,page_size=50 -> precisa buscar páginas 6..10 (SWAPI fixa em 10)
+    total = 82
+
+    for up_page in range(6, 11):  # 6..10
+        mock_swapi_people_page(respx, up_page, total=total)
+
+    client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
+    router = create_app_router(swapi_client=client)
+
+    status, payload, _ = router.dispatch(
+        method="GET",
+        path="/people",
+        query={"page": "2", "page_size": "50"},
+        headers={"x-request-id": "rid-p6"},
+        body=None,
+        request_id="rid-p6",
+    )
+
+    assert status == 200
+    assert payload["meta"]["page"] == 2
+    assert payload["meta"]["page_size"] == 50
+    assert payload["meta"]["total"] == 82
+    assert payload["meta"]["count"] == 32
+    assert len(payload["data"]) == 32
+    assert payload["links"]["prev"] == "/people?page=1&page_size=50"
+    assert payload["links"]["next"] is None

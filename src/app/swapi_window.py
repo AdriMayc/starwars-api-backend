@@ -1,9 +1,9 @@
 # src/app/swapi_window.py
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any
 
-from clients.swapi import SwapiClient
+from clients.swapi import SwapiClient, SwapiNotFound
 
 UPSTREAM_PAGE_SIZE = 10  # SWAPI é fixa em 10
 
@@ -27,8 +27,11 @@ def fetch_window(
     """
     Busca apenas as páginas necessárias da SWAPI para atender (page, page_size).
     Retorna (items_slice, total_count).
-    """
 
+    Regra importante:
+    - SWAPI pode retornar 404 quando 'page' está fora do range (em vez de results=[]).
+      Para listagens, isso significa "fim da lista".
+    """
     start = (page - 1) * page_size
     end = start + page_size
 
@@ -43,7 +46,12 @@ def fetch_window(
         if search:
             params["search"] = search
 
-        data = client.get(resource, params=params)
+        try:
+            data = client.get(resource, params=params)
+        except SwapiNotFound:
+            if up_page == up_start:
+                raise
+            break
 
         if total is None:
             total = _to_int(data.get("count"))
@@ -51,10 +59,10 @@ def fetch_window(
         results = data.get("results") or []
         collected.extend(results)
 
+        # Se a SWAPI devolver results vazio (raro), também encerra
         if not results:
             break
 
     offset = start - (up_start - 1) * UPSTREAM_PAGE_SIZE
     window = collected[offset : offset + page_size]
-
     return window, total

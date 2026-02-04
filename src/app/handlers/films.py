@@ -36,7 +36,7 @@ def list_films_handler(client: SwapiClient):
             params["search"] = q
 
         try:
-            data = client.get("/films/", params=params or None)
+            data = client.get("films/", params=params or None)
             results = data.get("results", []) or []
             items_all = [attach_id(it) for it in results]
 
