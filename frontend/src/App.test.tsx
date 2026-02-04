@@ -15,7 +15,14 @@ function mockFetchSequence(responses: Array<{ ok: boolean; status: number; body:
 }
 
 describe("App (smoke)", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    (import.meta as any).env = {
+      ...(import.meta as any).env,
+      VITE_API_BASE_URL: "http://127.0.0.1:8080",
+      VITE_API_KEY: undefined,
+    };
+  });
 
   it("renders and loads films list, selects an item", async () => {
     mockFetchSequence([
@@ -29,7 +36,6 @@ describe("App (smoke)", () => {
           errors: [],
         },
       },
-      // related (films/{id}/characters) pode ser chamado depois do clique
       {
         ok: true,
         status: 200,
@@ -44,7 +50,6 @@ describe("App (smoke)", () => {
 
     render(<App />);
 
-    // clique especificamente no item da lista (se houver duplicação futura)
     fireEvent.click((await screen.findAllByText("A New Hope"))[0]);
 
     const basicInfo = await screen.findByTestId("basic-info");

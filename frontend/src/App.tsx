@@ -1,20 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Tabs } from './components/Tabs';
-import { SearchInput } from './components/SearchInput';
-import { Pagination } from './components/Pagination';
-import { ResourceList } from './components/ResourceList';
-import { DetailPanel } from './components/DetailPanel';
-import type {
-  ResourceType,
-  Resource,
-  ApiEnvelope,
-  RelatedItem,
-} from "./types/api";
-import { fetchResources, fetchRelated } from './utils/api';
+import { useState, useEffect } from "react";
+import { Tabs } from "./components/Tabs";
+import { SearchInput } from "./components/SearchInput";
+import { Pagination } from "./components/Pagination";
+import { ResourceList } from "./components/ResourceList";
+import { DetailPanel } from "./components/DetailPanel";
+import type { ResourceType, Resource, ApiEnvelope, RelatedItem } from "./types/api";
+import { fetchResources, fetchRelated } from "./utils/api";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<ResourceType>('films');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<ResourceType>("films");
+  const [searchQuery, setSearchQuery] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -24,60 +19,72 @@ export default function App() {
   const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
   const [relatedResponse, setRelatedResponse] = useState<ApiEnvelope<RelatedItem> | null>(null);
 
+  // ---- LIST (com abort) ----
   useEffect(() => {
-    loadResources();
+    const ac = new AbortController();
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const data = await fetchResources(activeTab, page, pageSize, searchQuery, ac.signal);
+        if (!ac.signal.aborted) setResponse(data);
+      } catch (err: any) {
+        if (err?.name !== "AbortError") setError("Failed to load resources");
+      } finally {
+        if (!ac.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
   }, [activeTab, page, pageSize, searchQuery]);
 
+  // Ao trocar tab, zera seleção e related imediatamente
   useEffect(() => {
     setSelectedId(null);
     setRelatedItems([]);
     setRelatedResponse(null);
   }, [activeTab]);
 
+  // ---- RELATED (com abort + reset imediato) ----
   useEffect(() => {
-    if (selectedId && (activeTab === 'films' || activeTab === 'planets')) {
-      loadRelatedItems();
-    } else {
-      setRelatedItems([]);
-      setRelatedResponse(null);
-    }
-  }, [selectedId, activeTab]);
+    const ac = new AbortController();
 
-  const loadResources = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchResources(activeTab, page, pageSize, searchQuery);
-      setResponse(data);
-    } catch (err) {
-      setError('Failed to load resources');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // reset imediato evita “piscar” item anterior
+    setRelatedItems([]);
+    setRelatedResponse(null);
 
-  const loadRelatedItems = async () => {
-    if (!selectedId) return;
+    const canLoadRelated = selectedId != null && (activeTab === "films" || activeTab === "planets");
+    if (!canLoadRelated) return () => ac.abort();
 
-    try {
-      if (activeTab === 'films') {
-        const data = await fetchRelated('films', selectedId, 'characters');
-        setRelatedItems(data.data);
-        setRelatedResponse(data);
-      } else if (activeTab === 'planets') {
-        const data = await fetchRelated('planets', selectedId, 'residents');
-        setRelatedItems(data.data);
-        setRelatedResponse(data);
+    (async () => {
+      try {
+        if (activeTab === "films") {
+          const data = await fetchRelated("films", selectedId!, "characters", ac.signal);
+          if (!ac.signal.aborted) {
+            setRelatedItems(data.data);
+            setRelatedResponse(data);
+          }
+        } else if (activeTab === "planets") {
+          const data = await fetchRelated("planets", selectedId!, "residents", ac.signal);
+          if (!ac.signal.aborted) {
+            setRelatedItems(data.data);
+            setRelatedResponse(data);
+          }
+        }
+      } catch (err: any) {
+        if (err?.name !== "AbortError") console.error("Failed to load related items", err);
       }
-    } catch (err) {
-      console.error('Failed to load related items', err);
-    }
-  };
+    })();
+
+    return () => ac.abort();
+  }, [selectedId, activeTab]);
 
   const handleTabChange = (tab: ResourceType) => {
     setActiveTab(tab);
     setPage(1);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   const handleSearchChange = (value: string) => {
@@ -93,8 +100,8 @@ export default function App() {
   const selectedResource = response?.data.find((r) => r.id === selectedId) || null;
 
   const getRelatedLabel = () => {
-    if (activeTab === 'films') return 'Characters';
-    if (activeTab === 'planets') return 'Residents';
+    if (activeTab === "films") return "Characters";
+    if (activeTab === "planets") return "Residents";
     return undefined;
   };
 
@@ -125,6 +132,7 @@ export default function App() {
             <option value={20}>page_size = 20</option>
             <option value={50}>page_size = 50</option>
           </select>
+
           <Pagination
             page={page}
             hasNext={!!response?.links.next}

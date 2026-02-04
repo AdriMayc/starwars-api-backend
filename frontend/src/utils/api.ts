@@ -1,6 +1,9 @@
+// frontend/src/utils/api.ts
 import type { ApiEnvelope, ResourceType, Resource, RelatedItem } from "../types/api";
 
-function qs(params: Record<string, unknown>) {
+type ErrorLike = { code?: string; message?: string };
+
+function buildQuery(params: Record<string, unknown>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v === undefined || v === null) continue;
@@ -8,75 +11,103 @@ function qs(params: Record<string, unknown>) {
     if (!s) continue;
     sp.set(k, s);
   }
-  const q = sp.toString();
-  return q ? `?${q}` : "";
+  const qs = sp.toString();
+  return qs ? `?${qs}` : "";
 }
 
 function normalizeErrors(errors: unknown): string[] {
   if (!errors) return [];
   if (Array.isArray(errors)) {
-    return errors.map((e: any) => {
+    return errors.map((e: unknown) => {
       if (typeof e === "string") return e;
-      if (e?.message) return String(e.message);
-      if (e?.code) return String(e.code);
+      const obj = e as ErrorLike;
+      if (obj?.message) return String(obj.message);
+      if (obj?.code) return String(obj.code);
       return "Unknown error";
     });
   }
+  // backend sempre manda array, mas mantém fallback
   return ["Unknown error"];
 }
 
-async function request<T>(path: string): Promise<ApiEnvelope<T>> {
+async function requestEnvelope<T>(
+  path: string,
+  signal?: AbortSignal
+): Promise<ApiEnvelope<T>> {
   const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
 
   const headers: Record<string, string> = { accept: "application/json" };
   if (apiKey) headers["x-api-key"] = apiKey;
 
-  const res = await fetch(path, { headers });
+  const res = await fetch(path, { headers, signal });
   const text = await res.text();
 
   let json: any;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
+    // retorno “envelope-like” para não quebrar UI
     return {
       data: [] as any,
       meta: { request_id: "n/a" },
-      links: { self: path },
+      links: { self: path, next: null, prev: null },
       errors: ["Invalid JSON response"],
     };
   }
 
-  // Normaliza envelope do seu backend (errors pode ser objeto)
+  // normaliza errors do envelope do backend
   if (json && typeof json === "object" && "errors" in json) {
     json.errors = normalizeErrors(json.errors);
   }
 
+  // se HTTP != 2xx, ainda devolve envelope normalizado (sem throw)
   if (!res.ok) {
     const reqId = json?.meta?.request_id ?? "n/a";
+    const errs = normalizeErrors(json?.errors) || [];
+    const msg = json?.message ? [String(json.message)] : [];
     return {
       data: [] as any,
       meta: { request_id: reqId },
-      links: { self: path },
-      errors: [json?.message ?? `HTTP ${res.status}`],
+      links: { self: path, next: null, prev: null },
+      errors: errs.length ? errs : msg.length ? msg : [`HTTP ${res.status}`],
     };
   }
 
   return json as ApiEnvelope<T>;
 }
 
-export function fetchResources(
-  type: ResourceType,
-  page = 1,
-  pageSize = 10,
-  query = ""
+// LIST
+export async function fetchResources(
+  resource: ResourceType,
+  page: number,
+  pageSize: number,
+  q: string,
+  signal?: AbortSignal
 ): Promise<ApiEnvelope<Resource>> {
-  return request<Resource>(`/api/${type}${qs({ page, page_size: pageSize, q: query })}`);
+  const query = buildQuery({
+    page,
+    page_size: pageSize,
+    q: q?.trim() ? q.trim() : undefined,
+  });
+
+  return requestEnvelope<Resource>(`/api/${resource}${query}`, signal);
 }
 
-export function fetchRelated(
-  type: "films" | "planets",
+// RELATED
+export async function fetchRelated(
+  resource: "films" | "planets",
   id: number,
-  relationType: "characters" | "residents"
+  rel: "characters" | "residents",
+  signal?: AbortSignal,
+  page: number = 1,
+  pageSize: number = 10,
+  q?: string
 ): Promise<ApiEnvelope<RelatedItem>> {
-  return request<RelatedItem>(`/api/${type}/${id}/${relationType}`);
+  const query = buildQuery({
+    page,
+    page_size: pageSize,
+    q: q?.trim() ? q.trim() : undefined,
+  });
+
+  return requestEnvelope<RelatedItem>(`/api/${resource}/${id}/${rel}${query}`, signal);
 }

@@ -7,15 +7,18 @@ from app.main import create_app_router
 
 @respx.mock
 def test_people_list_success_adds_id_and_envelope():
-    respx.get("https://swapi.dev/api/people/").respond(
-        200,
-        json={
-            "count": 1,
-            "results": [
-                {"name": "Luke Skywalker", "url": "https://swapi.dev/api/people/1/"},
-            ],
-        },
-    )
+    respx.get(
+    "https://swapi.dev/api/people/",
+    params={"page": 1},
+).respond(
+    200,
+    json={
+        "count": 1,
+        "results": [
+            {"name": "Luke Skywalker", "url": "https://swapi.dev/api/people/1/"},
+        ],
+    },
+)
 
     client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
     router = create_app_router(swapi_client=client)
@@ -75,7 +78,10 @@ def test_people_list_timeout_returns_504():
 
 @respx.mock
 def test_people_list_respects_page_size_and_links():
-    respx.get("https://swapi.dev/api/people/").respond(
+    respx.get(
+        "https://swapi.dev/api/people/",
+        params={"page": 1},
+    ).respond(
         200,
         json={
             "count": 2,
@@ -106,3 +112,51 @@ def test_people_list_respects_page_size_and_links():
     assert payload["links"]["prev"] is None
     assert len(payload["data"]) == 1
     assert payload["data"][0]["id"] == 1
+
+
+@respx.mock
+def test_people_list_page_size_20_fetches_multiple_pages():
+    respx.get(
+        "https://swapi.dev/api/people/",
+        params={"page": 1},
+    ).respond(
+        200,
+        json={
+            "count": 20,
+            "results": [
+                {"name": f"P{i}", "url": f"https://swapi.dev/api/people/{i}/"}
+                for i in range(1, 11)
+            ],
+        },
+    )
+
+    respx.get(
+        "https://swapi.dev/api/people/",
+        params={"page": 2},
+    ).respond(
+        200,
+        json={
+            "count": 20,
+            "results": [
+                {"name": f"P{i}", "url": f"https://swapi.dev/api/people/{i}/"}
+                for i in range(11, 21)
+            ],
+        },
+    )
+
+    client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
+    router = create_app_router(swapi_client=client)
+
+    status, payload, _ = router.dispatch(
+        method="GET",
+        path="/people",
+        query={"page": "1", "page_size": "20"},
+        headers={"x-request-id": "rid-p5"},
+        body=None,
+        request_id="rid-p5",
+    )
+
+    assert status == 200
+    assert payload["meta"]["count"] == 20
+    assert payload["meta"]["total"] == 20
+    assert len(payload["data"]) == 20

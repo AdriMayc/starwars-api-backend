@@ -1,7 +1,10 @@
+# src/app/handlers/films.py
 from __future__ import annotations
 
 from typing import Any
 
+from app.pagination import PaginationError, build_links, build_self_url, parse_pagination
+from app.router import RequestContext
 from clients.swapi import (
     SwapiBadResponse,
     SwapiClient,
@@ -11,20 +14,12 @@ from clients.swapi import (
 )
 from clients.utils import attach_id
 from schemas.common import ErrorItem, fail, ok
-from app.router import RequestContext
-from app.pagination import (
-    PaginationError,
-    parse_pagination,
-    build_links,
-    build_self_url,
-)
 
 
 def list_films_handler(client: SwapiClient):
     def handler(ctx: RequestContext):
         q = ctx.query.get("q")
 
-        # --- paginação padronizada ---
         try:
             page, page_size = parse_pagination(ctx.query)
         except PaginationError as e:
@@ -36,27 +31,19 @@ def list_films_handler(client: SwapiClient):
             )
             return status, env.model_dump(), {}
 
-        params: dict[str, Any] = {"page": page}
+        params: dict[str, Any] = {}
         if q:
             params["search"] = q
 
-        # --- chamada SWAPI ---
         try:
-            data = client.get("/films/", params=params)
+            data = client.get("/films/", params=params or None)
+            results = data.get("results", []) or []
+            items_all = [attach_id(it) for it in results]
 
-            results = data.get("results", [])
-            # limitação consciente: SWAPI pagina fixo (~10)
-            results = results[:page_size]
-
-            items = [attach_id(it) for it in results]
-
-            total_raw = data.get("count")
-            total = (
-                int(total_raw)
-                if isinstance(total_raw, int)
-                or (isinstance(total_raw, str) and total_raw.isdigit())
-                else None
-            )
+            total = len(items_all)
+            start = (page - 1) * page_size
+            end = start + page_size
+            items = items_all[start:end]
 
             links = build_links(
                 ctx.path,

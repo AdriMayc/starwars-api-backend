@@ -16,7 +16,7 @@ describe("api.ts", () => {
     mockFetch({
       data: [{ id: 1, title: "A New Hope", url: "x" }],
       meta: { request_id: "r1" },
-      links: { self: "/films" },
+      links: { self: "/films", next: null, prev: null },
       errors: [],
     });
 
@@ -32,7 +32,7 @@ describe("api.ts", () => {
     mockFetch({
       data: [],
       meta: { request_id: "r2" },
-      links: { self: "/films" },
+      links: { self: "/films", next: null, prev: null },
       errors: [{ code: "UPSTREAM", message: "SWAPI down" }],
     });
 
@@ -44,15 +44,16 @@ describe("api.ts", () => {
     mockFetch({
       data: [{ id: 1, name: "Luke" }],
       meta: { request_id: "r3" },
-      links: { self: "/films/1/characters" },
+      links: { self: "/films/1/characters", next: null, prev: null },
       errors: [],
     });
 
     const r = await fetchRelated("films", 1, "characters");
     expect((globalThis as any).fetch).toHaveBeenCalledWith(
-      "/api/films/1/characters",
+      "/api/films/1/characters?page=1&page_size=10",
       expect.any(Object)
     );
     expect(r.data[0].name).toBe("Luke");
   });
 });
+
