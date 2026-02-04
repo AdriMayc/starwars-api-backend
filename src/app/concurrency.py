@@ -2,28 +2,31 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from typing import Any, Callable, Iterable, TypeVar
 
-from clients.swapi import SwapiClient
+T = TypeVar("T")
 
-def fetch_many_by_url(
-    client: SwapiClient,
-    urls: list[str],
+
+def run_bounded(
+    fn: Callable[[str], T],
+    items: Iterable[str],
     *,
-    max_workers: int = 10,
-) -> list[dict[str, Any]]:
-    if not urls:
+    max_workers: int = 8,
+) -> list[T]:
+    """
+    Executa fn(item) em paralelo, com limite de threads.
+    Mantém a ordem original de 'items' no retorno.
+    """
+    items_list = list(items)
+    if not items_list:
         return []
 
-    results: list[dict[str, Any]] = [None] * len(urls)  # type: ignore
-
-    def task(i: int, u: str):
-        return i, client.get_by_url(u, params=None)
+    results: list[T | None] = [None] * len(items_list)
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = [ex.submit(task, i, u) for i, u in enumerate(urls)]
-        for f in as_completed(futures):
-            i, payload = f.result()
-            results[i] = payload
+        future_map = {ex.submit(fn, url): idx for idx, url in enumerate(items_list)}
+        for fut in as_completed(future_map):
+            idx = future_map[fut]
+            results[idx] = fut.result()
 
-    return results  # preserve order
+    return [r for r in results if r is not None]

@@ -10,20 +10,20 @@ def test_planet_residents_success_envelope_and_ids():
     respx.get("https://swapi.dev/api/planets/1/").respond(
         200,
         json={
-            "name": "Tatooine",
             "residents": [
                 "https://swapi.dev/api/people/1/",
                 "https://swapi.dev/api/people/2/",
-            ],
-            "url": "https://swapi.dev/api/planets/1/",
+            ]
         },
     )
+
     respx.get("https://swapi.dev/api/people/1/").respond(
-        200, json={"name": "Luke Skywalker", "url": "https://swapi.dev/api/people/1/"}
-    )
+    200, json={"name": "P1", "url": "https://swapi.dev/api/people/1/"}
+)
     respx.get("https://swapi.dev/api/people/2/").respond(
-        200, json={"name": "C-3PO", "url": "https://swapi.dev/api/people/2/"}
-    )
+    200, json={"name": "P2", "url": "https://swapi.dev/api/people/2/"}
+)
+
 
     client = SwapiClient(retry=RetryConfig(max_retries=0), sleep_fn=lambda _: None)
     router = create_app_router(swapi_client=client)
@@ -40,6 +40,7 @@ def test_planet_residents_success_envelope_and_ids():
     assert status == 200
     assert payload["errors"] == []
     assert payload["meta"]["count"] == 2
+    assert payload["meta"]["total"] == 2
     assert payload["data"][0]["id"] == 1
     assert payload["links"]["self"] == "/planets/1/residents?page=1&page_size=10"
 

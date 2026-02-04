@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.concurrency import run_bounded
 from app.pagination import PaginationError, build_links, build_self_url, parse_pagination
 from app.router import RequestContext
 from clients.swapi import (
@@ -32,7 +33,7 @@ def list_planet_residents_handler(client: SwapiClient):
             )
             return status, env.model_dump(), {}
 
-        # buscar planeta
+        # 1) buscar planeta
         try:
             planet = client.get(f"/planets/{planet_id}/", params=None)
         except SwapiTimeout:
@@ -68,10 +69,21 @@ def list_planet_residents_handler(client: SwapiClient):
             )
             return status, env.model_dump(), {}
 
-        # resolver residents URLs
-        urls = planet.get("residents") or []
+        urls: list[str] = planet.get("residents") or []
+        total = len(urls)
+
+        # 2) pagina ANTES de resolver URLs
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_urls = urls[start:end]
+
+        # 3) fetch concorrente da janela
         try:
-            people: list[dict[str, Any]] = [client.get_by_url(u, params=None) for u in urls]
+            people: list[dict[str, Any]] = run_bounded(
+                lambda u: client.get_by_url(u, params=None),
+                page_urls,
+                max_workers=8,
+            )
         except SwapiTimeout:
             status, env = fail(
                 request_id=ctx.headers.get("x-request-id", ""),
@@ -93,23 +105,18 @@ def list_planet_residents_handler(client: SwapiClient):
 
         if q:
             q_low = q.lower()
-            items = [it for it in items if str(it.get("name", "")).lower().find(q_low) >= 0]
-
-        total = len(items)
-        start = (page - 1) * page_size
-        end = start + page_size
-        page_items = items[start:end]
+            items = [it for it in items if q_low in str(it.get("name", "")).lower()]
 
         links = build_links(ctx.path, page=page, page_size=page_size, q=q, total=total)
 
         env = ok(
-            data=page_items,
+            data=items,
             request_id=ctx.headers.get("x-request-id", ""),
             self_url=links["self"],
             meta={
                 "page": page,
                 "page_size": page_size,
-                "count": len(page_items),
+                "count": len(items),
                 "total": total,
             },
         )
