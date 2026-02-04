@@ -4,7 +4,6 @@ import { JsonViewer } from './JsonViewer';
 
 interface DetailPanelProps {
   resource: Resource | null;
-  resourceType: string;
   relatedItems?: Array<{ id: number; name: string }>;
   relatedLabel?: string;
   rawResponse?: any;
@@ -14,7 +13,6 @@ interface DetailPanelProps {
 
 export function DetailPanel({
   resource,
-  resourceType,
   relatedItems,
   relatedLabel,
   rawResponse,

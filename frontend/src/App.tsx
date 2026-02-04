@@ -202,7 +202,6 @@ export default function App() {
         <div className="w-full lg:w-3/5 bg-neutral-900 overflow-y-auto">
           <DetailPanel
             resource={selectedResource}
-            resourceType={activeTab}
             relatedItems={relatedItems}
             relatedLabel={getRelatedLabel()}
             rawResponse={relatedResponse || response}

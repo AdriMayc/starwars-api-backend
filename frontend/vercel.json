@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://starwars-gw-7da2sx11.uc.gateway.dev/$1"
+    }
+  ]
+}
