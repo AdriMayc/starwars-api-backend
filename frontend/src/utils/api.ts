@@ -1,4 +1,4 @@
-import type { ApiEnvelope, ResourceType, Resource, RelatedItem } from "../types/api";
+import type { ApiEnvelope, RelatedItem } from "../types/api";
 
 function qs(params: Record<string, unknown>) {
   const sp = new URLSearchParams();
@@ -25,13 +25,23 @@ function normalizeErrors(errors: unknown): string[] {
   return ["Unknown error"];
 }
 
-async function request<T>(path: string): Promise<ApiEnvelope<T>> {
+function baseUrl() {
+  // evita // e aceita vazio (ex.: proxy /api)
+  const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+  return raw.replace(/\/+$/, "");
+}
+
+async function request<T>(
+  path: string,
+  opts?: { signal?: AbortSignal }
+): Promise<ApiEnvelope<T>> {
   const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
 
   const headers: Record<string, string> = { accept: "application/json" };
   if (apiKey) headers["x-api-key"] = apiKey;
 
-  const res = await fetch(path, { headers });
+  const res = await fetch(path, { headers, signal: opts?.signal });
+
   const text = await res.text();
 
   let json: any;
@@ -46,7 +56,7 @@ async function request<T>(path: string): Promise<ApiEnvelope<T>> {
     };
   }
 
-  // Normaliza envelope do seu backend (errors pode ser objeto)
+  // Normaliza envelope do backend (errors pode vir como objeto)
   if (json && typeof json === "object" && "errors" in json) {
     json.errors = normalizeErrors(json.errors);
   }
@@ -64,19 +74,33 @@ async function request<T>(path: string): Promise<ApiEnvelope<T>> {
   return json as ApiEnvelope<T>;
 }
 
-export function fetchResources(
-  type: ResourceType,
-  page = 1,
-  pageSize = 10,
-  query = ""
-): Promise<ApiEnvelope<Resource>> {
-  return request<Resource>(`/api/${type}${qs({ page, page_size: pageSize, q: query })}`);
+export async function fetchResources(
+  resource: string,
+  page: number,
+  pageSize: number,
+  q: string,
+  signal?: AbortSignal
+): Promise<ApiEnvelope<any>> {
+  const url =
+    `${baseUrl()}/${resource}` +
+    qs({
+      page,
+      page_size: pageSize,
+      q: q?.trim() || undefined,
+    });
+
+  return request(url, { signal });
 }
 
-export function fetchRelated(
-  type: "films" | "planets",
+export async function fetchRelated(
+  resource: "films" | "planets",
   id: number,
-  relationType: "characters" | "residents"
+  rel: "characters" | "residents",
+  signal?: AbortSignal
 ): Promise<ApiEnvelope<RelatedItem>> {
-  return request<RelatedItem>(`/api/${type}/${id}/${relationType}`);
+  const url =
+    `${baseUrl()}/${resource}/${id}/${rel}` +
+    qs({ page: 1, page_size: 10 });
+
+  return request(url, { signal });
 }
