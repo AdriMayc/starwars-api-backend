@@ -9,10 +9,10 @@ info:
     e endpoints correlacionados.
 
 servers:
-  - url: https://example-gateway-url
-    description: API Gateway
-  - url: http://localhost:8080
-    description: Local (Functions Framework)
+- url: https://example-gateway-url
+  description: API Gateway
+- url: http://localhost:8080
+  description: Local (Functions Framework)
 
 paths:
   /health:
@@ -42,9 +42,9 @@ paths:
       summary: List films
       operationId: listFilms
       parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Search"
+      - $ref: "#/components/parameters/Page"
+      - $ref: "#/components/parameters/PageSize"
+      - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: Films list
@@ -64,9 +64,9 @@ paths:
       summary: List people
       operationId: listPeople
       parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Search"
+      - $ref: "#/components/parameters/Page"
+      - $ref: "#/components/parameters/PageSize"
+      - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: People list
@@ -86,9 +86,9 @@ paths:
       summary: List planets
       operationId: listPlanets
       parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Search"
+      - $ref: "#/components/parameters/Page"
+      - $ref: "#/components/parameters/PageSize"
+      - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: Planets list
@@ -108,9 +108,9 @@ paths:
       summary: List starships
       operationId: listStarships
       parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Search"
+      - $ref: "#/components/parameters/Page"
+      - $ref: "#/components/parameters/PageSize"
+      - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: Starships list
@@ -130,10 +130,10 @@ paths:
       summary: List film characters
       operationId: listFilmCharacters
       parameters:
-        - $ref: "#/components/parameters/IdPath"
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Search"
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/Page"
+      - $ref: "#/components/parameters/PageSize"
+      - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: Film characters list
@@ -155,10 +155,10 @@ paths:
       summary: List planet residents
       operationId: listPlanetResidents
       parameters:
-        - $ref: "#/components/parameters/IdPath"
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Search"
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/Page"
+      - $ref: "#/components/parameters/PageSize"
+      - $ref: "#/components/parameters/Search"
       responses:
         "200":
           description: Planet residents list
@@ -222,7 +222,7 @@ components:
     ErrorItem:
       type: object
       additionalProperties: false
-      required: [code, message]
+      required: [ code, message ]
       properties:
         code:
           type: string
@@ -236,7 +236,7 @@ components:
     Meta:
       type: object
       additionalProperties: false
-      required: [request_id]
+      required: [ request_id ]
       properties:
         request_id:
           type: string
@@ -260,7 +260,7 @@ components:
     Links:
       type: object
       additionalProperties: false
-      required: [self]
+      required: [ self ]
       properties:
         self:
           type: string
@@ -274,16 +274,16 @@ components:
     HealthData:
       type: object
       additionalProperties: false
-      required: [status]
+      required: [ status ]
       properties:
         status:
           type: string
-          enum: [ok]
+          enum: [ ok ]
 
     Film:
       type: object
       additionalProperties: true
-      required: [id, title, url]
+      required: [ id, title, url ]
       properties:
         id:
           type: integer
@@ -295,7 +295,7 @@ components:
     Person:
       type: object
       additionalProperties: true
-      required: [id, name, url]
+      required: [ id, name, url ]
       properties:
         id:
           type: integer
@@ -307,7 +307,7 @@ components:
     Planet:
       type: object
       additionalProperties: true
-      required: [id, name, url]
+      required: [ id, name, url ]
       properties:
         id:
           type: integer
@@ -319,7 +319,7 @@ components:
     Starship:
       type: object
       additionalProperties: true
-      required: [id, name, url]
+      required: [ id, name, url ]
       properties:
         id:
           type: integer
@@ -331,7 +331,7 @@ components:
     EnvelopeBase:
       type: object
       additionalProperties: false
-      required: [data, meta, links, errors]
+      required: [ data, meta, links, errors ]
       properties:
         data:
           nullable: true
@@ -346,68 +346,68 @@ components:
 
     EnvelopeHealth:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              $ref: "#/components/schemas/HealthData"
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            $ref: "#/components/schemas/HealthData"
 
     EnvelopeFilmsList:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              type: array
-              items:
-                $ref: "#/components/schemas/Film"
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/Film"
 
     EnvelopePeopleList:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              type: array
-              items:
-                $ref: "#/components/schemas/Person"
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/Person"
 
     EnvelopePlanetsList:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              type: array
-              items:
-                $ref: "#/components/schemas/Planet"
-    
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/Planet"
+
     EnvelopeStarshipsList:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              type: array
-              items:
-                $ref: "#/components/schemas/Starship"
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/Starship"
 
-  EnvelopeFilmCharactersList:
+    EnvelopeFilmCharactersList:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              type: array
-              items:
-                $ref: "#/components/schemas/Person"
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/Person"
 
-  EnvelopePlanetResidentsList:
+    EnvelopePlanetResidentsList:
       allOf:
-        - $ref: "#/components/schemas/EnvelopeBase"
-        - type: object
-          properties:
-            data:
-              type: array
-              items:
-                $ref: "#/components/schemas/Person"
+      - $ref: "#/components/schemas/EnvelopeBase"
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/Person"
