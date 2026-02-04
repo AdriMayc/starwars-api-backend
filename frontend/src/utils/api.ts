@@ -26,7 +26,12 @@ function normalizeErrors(errors: unknown): string[] {
 }
 
 async function request<T>(path: string): Promise<ApiEnvelope<T>> {
-  const res = await fetch(path, { headers: { accept: "application/json" } });
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (apiKey) headers["x-api-key"] = apiKey;
+
+  const res = await fetch(path, { headers });
   const text = await res.text();
 
   let json: any;
