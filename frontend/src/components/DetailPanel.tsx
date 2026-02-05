@@ -11,6 +11,32 @@ interface DetailPanelProps {
   selfLink?: string;
 }
 
+type DisplayField =
+  | { label: string; value: string; kind: 'text' }
+  | { label: string; count: number; kind: 'relation' };
+
+const SWAPI_PREFIX = 'https://swapi.dev/api/';
+
+function isSwapiUrlArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === 'string' && x.startsWith(SWAPI_PREFIX));
+}
+
+function toLabel(key: string) {
+  return key
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function formatScalar(value: unknown): string {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return value;
+  // fallback: objetos pequenos, etc.
+  return JSON.stringify(value);
+}
+
 export function DetailPanel({
   resource,
   relatedItems,
@@ -29,17 +55,27 @@ export function DetailPanel({
 
   const name = 'title' in resource ? resource.title : 'name' in resource ? resource.name : '';
 
-  const getDisplayFields = (): Array<{ label: string; value: string }> => {
-    const exclude = ['id', 'url', 'name', 'title'];
+  const getDisplayFields = (): DisplayField[] => {
+    // exclui campos já exibidos no Basic Information e evita duplicar title/name
+    const exclude = new Set(['id', 'url', 'name', 'title']);
+
     return Object.entries(resource)
-      .filter(([key]) => !exclude.includes(key))
-      .map(([key, value]) => ({
-        label: key
-          .split('_')
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' '),
-        value: String(value),
-      }));
+      .filter(([key]) => !exclude.has(key))
+      .map(([key, value]) => {
+        const label = toLabel(key);
+
+        // 🔑 RELACIONAMENTOS (arrays de URLs): não mostra a lista crua
+        if (isSwapiUrlArray(value)) {
+          return { label, count: value.length, kind: 'relation' };
+        }
+
+        // lista comum (ex.: string[] que não é URL)
+        if (Array.isArray(value)) {
+          return { label, value: value.map((v) => formatScalar(v)).join(', '), kind: 'text' };
+        }
+
+        return { label, value: formatScalar(value), kind: 'text' };
+      });
   };
 
   return (
@@ -66,11 +102,25 @@ export function DetailPanel({
       {/* Additional Fields */}
       <div className="p-6 border-b border-neutral-800">
         <h2 className="text-lg font-medium text-neutral-100 mb-4">Details</h2>
+
         <div className="space-y-3">
           {getDisplayFields().map((field, index) => (
             <div key={index} className="flex">
               <span className="text-sm text-neutral-500 w-40 shrink-0">{field.label}</span>
-              <span className="text-sm text-neutral-300">{field.value}</span>
+
+              {field.kind === 'relation' ? (
+                <span className="text-sm text-neutral-300">
+                  {field.count} item{field.count === 1 ? '' : 's'}
+                  {relatedLabel &&
+                  (field.label.toLowerCase() === relatedLabel.toLowerCase() ||
+                    // cobre casos como "Characters" (campo) + "Characters" (section)
+                    field.label.toLowerCase().includes(relatedLabel.toLowerCase())) ? (
+                    <span className="text-neutral-500"> (see below)</span>
+                  ) : null}
+                </span>
+              ) : (
+                <span className="text-sm text-neutral-300">{field.value}</span>
+              )}
             </div>
           ))}
         </div>
