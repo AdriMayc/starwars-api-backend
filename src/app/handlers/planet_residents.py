@@ -1,4 +1,3 @@
-# src/app/handlers/planet_residents.py
 from __future__ import annotations
 
 from typing import Any
@@ -7,6 +6,7 @@ from app.concurrency import run_bounded
 from app.pagination import PaginationError, build_links, build_self_url, parse_pagination
 from app.router import RequestContext
 from clients.swapi import (
+    RetryConfig,
     SwapiBadResponse,
     SwapiClient,
     SwapiNotFound,
@@ -18,6 +18,12 @@ from schemas.common import ErrorItem, fail, ok
 
 
 def list_planet_residents_handler(client: SwapiClient):
+    # client "fail-fast" só para o fan-out do correlated endpoint
+    client_fast = SwapiClient(
+        timeout=2.0,
+        retry=RetryConfig(max_retries=0, backoff_base=0.0, backoff_factor=1.0),
+    )
+
     def handler(ctx: RequestContext):
         planet_id = ctx.path_params.get("id")
         q = (ctx.query.get("q") or "").strip() or None
@@ -33,7 +39,7 @@ def list_planet_residents_handler(client: SwapiClient):
             )
             return status, env.model_dump(), {}
 
-        # 1) buscar planeta
+        # 1) buscar planeta (1 call) com client normal
         try:
             planet = client.get(f"planets/{planet_id}/", params=None)
         except SwapiTimeout:
@@ -77,12 +83,13 @@ def list_planet_residents_handler(client: SwapiClient):
         end = start + page_size
         page_urls = urls[start:end]
 
-        # 3) fetch concorrente da janela
+        # 3) fan-out (fail-fast + 1 onda)
         try:
+            workers = min(16, max(1, len(page_urls)))
             people: list[dict[str, Any]] = run_bounded(
-                lambda u: client.get_by_url(u, params=None),
+                lambda u: client_fast.get_by_url(u, params=None),
                 page_urls,
-                max_workers=8,
+                max_workers=workers,
             )
         except SwapiTimeout:
             status, env = fail(
