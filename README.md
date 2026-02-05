@@ -7,6 +7,10 @@ Plataforma para explorar dados de Star Wars consumindo a **SWAPI** e expondo um 
 > Upstream: `https://swapi.dev/api`
 
 ## Links rápidos
+
+### Demo
+Frontend (Vercel): https://starwars-api-backend.vercel.app/
+
 - Documentação (detalhada):
   - [Contexto e objetivos](docs/00-context.md)
   - [Arquitetura (GCP + Vercel) + Mermaid](docs/01-architecture.md)
