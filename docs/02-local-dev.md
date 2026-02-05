@@ -35,10 +35,12 @@ functions-framework --source src/main.py --target main --port 8080
 PYTHONPATH=src functions-framework --source src/main.py --target main --port 8080
 ```
 
-### Testar
-```bash
-curl -i http://127.0.0.1:8080/health
-```
+### Teste de health (Windows / PowerShell)
+
+No PowerShell, utilize `Invoke-WebRequest`:
+
+```powershell
+Invoke-WebRequest -Uri "http://127.0.0.1:8080/health" -Method GET
 
 > Em local você chama o backend direto (sem API Gateway), então API Key não é exigida.
 
